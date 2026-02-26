@@ -41,33 +41,29 @@ CREATE TABLE IF NOT EXISTS order_items (
   quantity INT NOT NULL
 );
 
--- Insert sample users
+-- Insert sample users with hashed passwords
 INSERT INTO users (name, email, password, role) VALUES
-('Admin Toko', 'admin@tokobaju.com', '123456', 'admin'),
-('Budi Santoso', 'budi@email.com', 'budi123', 'customer'),
-('Siti Nurhaliza', 'siti@email.com', 'siti123', 'customer'),
-('Ahmad Wijaya', 'ahmad@email.com', 'ahmad123', 'customer')
+('Admin Toko', 'admin@tokobaju.com', '$2a$10$ZqLap.q5gOABzn45XsOEU.i3iFZdmMuMZp9MB8VlZ.1MnrnZx2NHa', 'admin'),
+('Budi Santoso', 'budi@email.com', '$2a$10$QyLXd1LE/e.LpW8zhGX..OY8WOBhQEWb.3izWo2fNuD7Fn9MnaXA2', 'customer'),
+('Siti Nurhaliza', 'siti@email.com', '$2a$10$oV1HQedXx/sX6TTS0y5EJOf90p3XeK.ZnAwZIh4wPxJnG9FLzEhfW', 'customer'),
+('Ahmad Wijaya', 'ahmad@email.com', '$2a$10$Pc9XHEuQY1Nhhg.TBFV54OGePcCviAcQiPRSYEiPWCwDD1sAWu6qi', 'customer')
 ON CONFLICT DO NOTHING;
 
 -- Insert sample products
 INSERT INTO products (name, price, stock, category, description, image) VALUES
-('Kemeja Casual Putih', 150000, 25, 'Kemeja', 'Kemeja kasual putih dengan bahan katun berkualitas tinggi, nyaman untuk penggunaan sehari-hari.', 'https://images.unsplash.com/photo-1596399124228-559b3b1fbcc7?w=400&h=400&fit=crop'),
-('Celana Jeans Biru', 200000, 15, 'Celana', 'Celana jeans biru dengan desain trendy dan jahitan yang rapi.', 'https://images.unsplash.com/photo-1542272604-787c62d465d1?w=400&h=400&fit=crop'),
-('T-Shirt Premium Hitam', 120000, 30, 'T-Shirt', 'T-shirt premium dengan bahan kombed berkualitas tinggi dan desain eksklusif.', 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop'),
-('Jaket Denim Biru', 300000, 10, 'Jaket', 'Jaket denim klasik biru dengan potongan modern dan bahan denim tebal.', 'https://images.unsplash.com/photo-1551028719-00167b16ebc5?w=400&h=400&fit=crop'),
-('Celana Chino Coklat', 180000, 20, 'Celana', 'Celana chino coklat dengan potongan slim fit dan bahan breathable.', 'https://images.unsplash.com/photo-1473272639391-f16e3bf48172?w=400&h=400&fit=crop'),
-('Kemeja Formal Biru', 250000, 12, 'Kemeja', 'Kemeja formal biru cocok untuk acara formal dan kantor.', 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=400&h=400&fit=crop'),
-('Hoodie Abu-abu', 280000, 18, 'Hoodie', 'Hoodie abu-abu dengan material fleece yang nyaman dan hangat.', 'https://images.unsplash.com/photo-1556821552-5ff63b1f87f2?w=400&h=400&fit=crop'),
-('Celana Jogger Hitam', 160000, 22, 'Celana', 'Celana jogger hitam dengan desain sporty dan kenyamanan maksimal.', 'https://images.unsplash.com/photo-1506629082847-11d3e392e4b5?w=400&h=400&fit=crop'),
-('Polo Shirt Merah', 140000, 28, 'Polo', 'Polo shirt merah dengan kerah yang rapi dan bahan berkualitas.', 'https://images.unsplash.com/photo-1591195853828-11db59a44f6b?w=400&h=400&fit=crop'),
-('Jaket Bomber Hijau', 320000, 8, 'Jaket', 'Jaket bomber hijau dengan desain streetwear dan bahan tahan lama.', 'https://images.unsplash.com/photo-1592225122622-1a0e9eb76cba?w=400&h=400&fit=crop')
+('Kemeja Casual Putih', 150000, 25, 'Kemeja', 'Kemeja kasual putih dengan bahan katun berkualitas tinggi, nyaman untuk penggunaan sehari-hari.', 'kemeja putih.png'),
+('Celana Jeans Biru', 200000, 15, 'Celana', 'Celana jeans biru dengan desain trendy dan jahitan yang rapi.', 'Celana Jeans Biru.png'),
+('T-Shirt Premium Hitam', 120000, 30, 'T-Shirt', 'T-shirt premium dengan bahan kombed berkualitas tinggi dan desain eksklusif.', 'T-Shirt Premium Hitam.png'),
+('Jaket Denim Biru', 300000, 10, 'Jaket', 'Jaket denim klasik biru dengan potongan modern dan bahan denim tebal.', 'Jaket Denim Biru.png'),
+('Celana Chino Coklat', 180000, 20, 'Celana', 'Celana chino coklat dengan potongan slim fit dan bahan breathable.', 'Celana Chino Coklat.png'),
+('Kemeja Formal Biru', 250000, 12, 'Kemeja', 'Kemeja formal biru cocok untuk acara formal dan kantor.', 'Kemeja Biru.png'),
+('Hoodie Abu-abu', 280000, 18, 'Hoodie', 'Hoodie abu-abu dengan material fleece yang nyaman dan hangat.', 'Hoodie Abu-abu.png'),
+('Celana Jogger Hitam', 160000, 22, 'Celana', 'Celana jogger hitam dengan desain sporty dan kenyamanan maksimal.', 'Celana Jogger Hitam.png'),
+('Polo Shirt Merah', 140000, 28, 'Polo', 'Polo shirt merah dengan kerah yang rapi dan bahan berkualitas.', 'Polo Shirt Merah.png'),
+('Jaket Bomber Hijau', 320000, 8, 'Jaket', 'Jaket bomber hijau dengan desain streetwear dan bahan tahan lama.', 'Jaket Bomber Hijau.png')
 ON CONFLICT DO NOTHING;
 
 -- Insert sample orders
-INSERT INTO users (name, email, password, role) VALUES
-('Budi Santoso', 'budi@email.com', 'budi123', 'customer')
-ON CONFLICT DO NOTHING;
-
 INSERT INTO orders (user_id, address, phone, payment_method, discount_code, total, status) VALUES
 (2, 'Jl. Merdeka No. 123, Jakarta Pusat', '081234567890', 'transfer', NULL, 450000, 'completed'),
 (3, 'Jl. Sudirman No. 456, Jakarta Selatan', '082345678901', 'transfer', NULL, 330000, 'pending'),

@@ -3,9 +3,14 @@ import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import bcryptjs from 'bcryptjs';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import pool from './db.js';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -71,6 +76,7 @@ const validateOrderData = (data) => {
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '../vite-project/public')));
 
 // Middleware untuk verify token
 const verifyToken = (req, res, next) => {

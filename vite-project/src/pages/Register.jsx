@@ -2,17 +2,20 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { FormInput } from '../components/FormInput'
 import { Button } from '../components/Button'
-import { validateLoginForm } from '../utils/validation'
 import './LoginProfessional.css'
 
 const API_URL = 'http://localhost:3000/api'
 
-export default function Login() {
-  const [formData, setFormData] = useState({ email: '', password: '' })
+export default function Register() {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    password_confirm: '',
+  })
   const [errors, setErrors] = useState({})
   const [serverError, setServerError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [rememberMe, setRememberMe] = useState(false)
   const navigate = useNavigate()
 
   const handleChange = (e) => {
@@ -24,11 +27,39 @@ export default function Login() {
     setServerError('')
   }
 
+  const validateForm = () => {
+    const newErrors = {}
+
+    if (!formData.name || formData.name.trim().length === 0) {
+      newErrors.name = 'Nama tidak boleh kosong'
+    }
+
+    if (!formData.email || formData.email.trim().length === 0) {
+      newErrors.email = 'Email tidak boleh kosong'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Format email tidak valid'
+    }
+
+    if (!formData.password || formData.password.length === 0) {
+      newErrors.password = 'Password tidak boleh kosong'
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password minimal 6 karakter'
+    }
+
+    if (!formData.password_confirm || formData.password_confirm.length === 0) {
+      newErrors.password_confirm = 'Konfirmasi password tidak boleh kosong'
+    } else if (formData.password !== formData.password_confirm) {
+      newErrors.password_confirm = 'Password tidak cocok'
+    }
+
+    return { valid: Object.keys(newErrors).length === 0, errors: newErrors }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
 
     // Validate form
-    const validation = validateLoginForm(formData)
+    const validation = validateForm()
     if (!validation.valid) {
       setErrors(validation.errors)
       return
@@ -39,7 +70,7 @@ export default function Login() {
     setServerError('')
 
     try {
-      const response = await fetch(`${API_URL}/auth/login`, {
+      const response = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -48,7 +79,7 @@ export default function Login() {
       const data = await response.json()
 
       if (!response.ok) {
-        setServerError(data.error || 'Terjadi kesalahan saat login')
+        setServerError(data.error || 'Terjadi kesalahan saat mendaftar')
         return
       }
 
@@ -57,17 +88,13 @@ export default function Login() {
       localStorage.setItem('token', data.token)
       localStorage.setItem('isLoggedIn', 'true')
 
-      if (rememberMe) {
-        localStorage.setItem('rememberEmail', formData.email)
-      }
-
-      // Alert konfirmasi masuk dashboard
-      if (window.confirm(`✅ Selamat datang ${data.user.name}!\n\nMasuk ke dashboard?`)) {
+      // Alert konfirmasi
+      if (window.confirm(`✅ Pendaftaran berhasil!\n\nSelamat datang ${data.user.name}!\n\nMasuk ke dashboard?`)) {
         navigate('/dashboard')
       }
     } catch (err) {
       setServerError('Tidak bisa terhubung ke server. Pastikan backend running di http://localhost:3000')
-      console.error('Login error:', err)
+      console.error('Register error:', err)
     } finally {
       setLoading(false)
     }
@@ -86,7 +113,7 @@ export default function Login() {
           <div className="login-header">
             <div className="login-logo">👕</div>
             <h1>Toko Baju</h1>
-            <p>Masuk ke Akun Anda</p>
+            <p>Daftar Akun Baru</p>
           </div>
 
           <form onSubmit={handleSubmit} className="login-form">
@@ -96,6 +123,18 @@ export default function Login() {
                 {serverError}
               </div>
             )}
+
+            <FormInput
+              label="Nama Lengkap"
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              error={errors.name}
+              placeholder="Masukkan nama lengkap Anda"
+              required
+              autoComplete="name"
+            />
 
             <FormInput
               label="Email"
@@ -118,20 +157,20 @@ export default function Login() {
               error={errors.password}
               placeholder="Minimal 6 karakter"
               required
-              autoComplete="current-password"
+              autoComplete="new-password"
             />
 
-            <div className="login-options">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                />
-                <span>Ingat saya</span>
-              </label>
-              <a href="#" className="forgot-password">Lupa password?</a>
-            </div>
+            <FormInput
+              label="Konfirmasi Password"
+              type="password"
+              name="password_confirm"
+              value={formData.password_confirm}
+              onChange={handleChange}
+              error={errors.password_confirm}
+              placeholder="Ketik ulang password Anda"
+              required
+              autoComplete="new-password"
+            />
 
             <Button
               type="submit"
@@ -141,25 +180,25 @@ export default function Login() {
               isLoading={loading}
               className="login-button"
             >
-              {loading ? 'Masuk...' : 'Masuk'}
+              {loading ? 'Mendaftar...' : 'Daftar'}
             </Button>
           </form>
 
           <div className="login-footer">
             <p className="login-signup">
-              Belum punya akun? <Link to="/register" style={{ color: '#007bff', textDecoration: 'none' }}>Daftar sekarang</Link>
+              Sudah punya akun? <Link to="/login" style={{ color: '#007bff', textDecoration: 'none' }}>Masuk di sini</Link>
             </p>
           </div>
         </div>
 
         <div className="login-info">
-          <h2>Selamat Datang</h2>
-          <p>Kelola toko baju Anda dengan mudah dan efisien</p>
+          <h2>Bergabunglah dengan Kami</h2>
+          <p>Dapatkan pengalaman berbelanja yang menyenangkan</p>
           <ul className="login-features">
-            <li>✓ Kelola produk dengan mudah</li>
-            <li>✓ Lacak pesanan pelanggan</li>
-            <li>✓ Analitik penjualan real-time</li>
-            <li>✓ Laporan keuangan lengkap</li>
+            <li>✓ Belanja koleksi fashion terlengkap</li>
+            <li>✓ Pembayaran aman dan terpercaya</li>
+            <li>✓ Pengiriman cepat ke seluruh Indonesia</li>
+            <li>✓ Dukungan pelanggan 24/7</li>
           </ul>
         </div>
       </div>
