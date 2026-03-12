@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { FormInput } from '../components/FormInput'
 import { Button } from '../components/Button'
+import toastManager from '../components/Toast'
+import * as api from '../api'
 import './LoginProfessional.css'
-
-const API_URL = 'http://localhost:3000/api'
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -21,9 +21,7 @@ export default function Register() {
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }))
-    }
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }))
     setServerError('')
   }
 
@@ -40,13 +38,13 @@ export default function Register() {
       newErrors.email = 'Format email tidak valid'
     }
 
-    if (!formData.password || formData.password.length === 0) {
+    if (!formData.password) {
       newErrors.password = 'Password tidak boleh kosong'
     } else if (formData.password.length < 6) {
       newErrors.password = 'Password minimal 6 karakter'
     }
 
-    if (!formData.password_confirm || formData.password_confirm.length === 0) {
+    if (!formData.password_confirm) {
       newErrors.password_confirm = 'Konfirmasi password tidak boleh kosong'
     } else if (formData.password !== formData.password_confirm) {
       newErrors.password_confirm = 'Password tidak cocok'
@@ -58,7 +56,6 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    // Validate form
     const validation = validateForm()
     if (!validation.valid) {
       setErrors(validation.errors)
@@ -70,30 +67,19 @@ export default function Register() {
     setServerError('')
 
     try {
-      const response = await fetch(`${API_URL}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        setServerError(data.error || 'Terjadi kesalahan saat mendaftar')
-        return
-      }
+      const data = await api.register(formData)
 
       // Save to localStorage
       localStorage.setItem('user', JSON.stringify(data.user))
       localStorage.setItem('token', data.token)
       localStorage.setItem('isLoggedIn', 'true')
 
-      // Alert konfirmasi
-      if (window.confirm(`✅ Pendaftaran berhasil!\n\nSelamat datang ${data.user.name}!\n\nMasuk ke dashboard?`)) {
-        navigate('/dashboard')
-      }
+      toastManager.success('Pendaftaran berhasil! Selamat datang.')
+      navigate('/dashboard')
     } catch (err) {
-      setServerError('Tidak bisa terhubung ke server. Pastikan backend running di http://localhost:3000')
+      const msg = err.message || 'Gagal mendaftar. Silakan coba lagi.'
+      setServerError(msg)
+      toastManager.error(msg)
       console.error('Register error:', err)
     } finally {
       setLoading(false)
@@ -102,12 +88,6 @@ export default function Register() {
 
   return (
     <div className="login-container">
-      <div className="login-background">
-        <div className="login-shape-1"></div>
-        <div className="login-shape-2"></div>
-        <div className="login-shape-3"></div>
-      </div>
-
       <div className="login-content">
         <div className="login-card">
           <div className="login-header">
@@ -186,7 +166,7 @@ export default function Register() {
 
           <div className="login-footer">
             <p className="login-signup">
-              Sudah punya akun? <Link to="/login" style={{ color: '#007bff', textDecoration: 'none' }}>Masuk di sini</Link>
+              Sudah punya akun? <Link to="/login">Masuk di sini</Link>
             </p>
           </div>
         </div>
@@ -205,3 +185,4 @@ export default function Register() {
     </div>
   )
 }
+

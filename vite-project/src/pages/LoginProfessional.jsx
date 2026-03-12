@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { FormInput } from '../components/FormInput'
 import { Button } from '../components/Button'
 import { validateLoginForm } from '../utils/validation'
+import toastManager from '../components/Toast'
+import * as api from '../api'
 import './LoginProfessional.css'
-
-const API_URL = 'http://localhost:3000/api'
 
 export default function Login() {
   const [formData, setFormData] = useState({ email: '', password: '' })
@@ -15,19 +15,24 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(false)
   const navigate = useNavigate()
 
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('rememberEmail')
+    if (savedEmail) {
+      setFormData(prev => ({ ...prev, email: savedEmail }))
+      setRememberMe(true)
+    }
+  }, [])
+
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }))
-    }
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }))
     setServerError('')
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    // Validate form
     const validation = validateLoginForm(formData)
     if (!validation.valid) {
       setErrors(validation.errors)
@@ -39,18 +44,7 @@ export default function Login() {
     setServerError('')
 
     try {
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        setServerError(data.error || 'Terjadi kesalahan saat login')
-        return
-      }
+      const data = await api.login(formData.email, formData.password)
 
       // Save to localStorage
       localStorage.setItem('user', JSON.stringify(data.user))
@@ -59,14 +53,16 @@ export default function Login() {
 
       if (rememberMe) {
         localStorage.setItem('rememberEmail', formData.email)
+      } else {
+        localStorage.removeItem('rememberEmail')
       }
 
-      // Alert konfirmasi masuk dashboard
-      if (window.confirm(`✅ Selamat datang ${data.user.name}!\n\nMasuk ke dashboard?`)) {
-        navigate('/dashboard')
-      }
+      toastManager.success(`Selamat datang kembali, ${data.user.name}!`)
+      navigate('/dashboard')
     } catch (err) {
-      setServerError('Tidak bisa terhubung ke server. Pastikan backend running di http://localhost:3000')
+      const msg = err.message || 'Email atau password salah'
+      setServerError(msg)
+      toastManager.error(msg)
       console.error('Login error:', err)
     } finally {
       setLoading(false)
@@ -75,12 +71,6 @@ export default function Login() {
 
   return (
     <div className="login-container">
-      <div className="login-background">
-        <div className="login-shape-1"></div>
-        <div className="login-shape-2"></div>
-        <div className="login-shape-3"></div>
-      </div>
-
       <div className="login-content">
         <div className="login-card">
           <div className="login-header">
@@ -147,7 +137,7 @@ export default function Login() {
 
           <div className="login-footer">
             <p className="login-signup">
-              Belum punya akun? <Link to="/register" style={{ color: '#007bff', textDecoration: 'none' }}>Daftar sekarang</Link>
+              Belum punya akun? <Link to="/register">Daftar sekarang</Link>
             </p>
           </div>
         </div>
@@ -166,3 +156,4 @@ export default function Login() {
     </div>
   )
 }
+

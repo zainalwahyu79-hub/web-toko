@@ -7,42 +7,21 @@ import { FormInput, FormSelect, FormTextarea } from '../components/FormInput'
 import { Modal, ConfirmModal } from '../components/Modal'
 import { validateProductForm, validateCheckoutForm } from '../utils/validation'
 
+// New Components
+import Navbar from '../components/Navbar'
+import Hero from '../components/Hero'
+import ProductCard from '../components/ProductCard'
+import CheckoutFlow from '../components/CheckoutFlow'
+
 // Fungsi untuk mendapatkan gambar produk dari folder public atau uploads
 const getProductImage = (product) => {
-  // Jika product adalah object
-  if (typeof product === 'object' && product) {
-    // Jika ada image field dari database
-    if (product.image) {
-      // Jika URL Unsplash
-      if (product.image.startsWith('http')) {
-        return product.image;
-      }
-      // Jika path lokal (dimulai dengan /)
-      if (product.image.startsWith('/')) {
-        return product.image;
-      }
-    }
-
-    // Fallback ke mapping local images di public folder
-    const imageMap = {
-      'Kemeja Casual Putih': '/kemeja putih.png',
-      'Kemeja Formal Biru': '/Kemeja Biru.png',
-      'Celana Jeans Biru': '/Celana Jeans Biru.png',
-      'Celana Chino Coklat': '/Celana Chino Coklat.png',
-      'Celana Jogger Hitam': '/Celana Jogger Hitam.png',
-      'T-Shirt Premium Hitam': '/T-Shirt Premium Hitam.png',
-      'Jaket Denim Biru': '/Jaket Denim Biru.png',
-      'Jaket Bomber Hijau': '/Jaket Bomber Hijau.png',
-      'Hoodie Abu-abu': '/Hoodie Abu-abu.png',
-      'Polo Shirt Merah': '/Polo Shirt Merah.png',
-    }
-    
-    if (imageMap[product.name]) {
-      return imageMap[product.name];
+  if (product && product.image) {
+    if (typeof product.image === 'string') {
+      if (product.image.startsWith('http')) return product.image;
+      if (product.image.startsWith('/')) return product.image;
+      return '/' + product.image;
     }
   }
-  
-  // Default fallback
   return '/vite.svg';
 }
 
@@ -72,7 +51,7 @@ export default function Dashboard() {
     try {
       setLoading(true)
       setError('')
-      
+
       const productsData = await api.getProducts()
       setProducts(productsData)
 
@@ -95,19 +74,22 @@ export default function Dashboard() {
     navigate('/login')
   }
 
-  if (!user) {
-    return <div style={{ textAlign: 'center', padding: '20px' }}>Loading...</div>
-  }
-
-  if (loading) {
-    return <div style={{ textAlign: 'center', padding: '20px' }}>Loading data...</div>
+  if (!user || loading) {
+    return (
+      <div className="flex-center" style={{ height: '100vh', flexDirection: 'column', gap: '20px' }}>
+        <div className="premium-loader"></div>
+        <p style={{ color: 'var(--gray-500)', fontWeight: '600' }}>Menyiapkan pengalaman belanja Anda...</p>
+      </div>
+    )
   }
 
   if (error) {
     return (
-      <div style={{ textAlign: 'center', padding: '20px', color: 'red' }}>
-        <p>{error}</p>
-        <button onClick={loadData}>Coba Lagi</button>
+      <div className="flex-center" style={{ height: '100vh', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ fontSize: '48px' }}>⚠️</div>
+        <h2 style={{ color: 'var(--danger)' }}>Waduh! Terjadi Kesalahan</h2>
+        <p style={{ color: 'var(--gray-600)', maxWidth: '400px', textAlign: 'center' }}>{error}</p>
+        <button className="btn-primary" onClick={loadData}>Coba Muat Ulang</button>
       </div>
     )
   }
@@ -184,26 +166,10 @@ function CustomerDashboard({ user, handleLogout, products, orders, onRefresh }) 
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('semua')
   const [showCheckout, setShowCheckout] = useState(false)
-  const [checkoutForm, setCheckoutForm] = useState({
-    address: '',
-    phone: '',
-    payment_method: 'transfer',
-    discount_code: '',
-  })
   const [discountAmount, setDiscountAmount] = useState(0)
   const [creatingOrder, setCreatingOrder] = useState(false)
-  const [checkoutErrors, setCheckoutErrors] = useState({})
-
-  const handleCheckoutChange = (e) => {
-    const { name, value } = e.target
-    setCheckoutForm({ ...checkoutForm, [name]: value })
-    if (checkoutErrors[name]) {
-      setCheckoutErrors({ ...checkoutErrors, [name]: '' })
-    }
-  }
 
   const CATEGORIES = ['semua', 'Kemeja', 'Celana', 'T-Shirt', 'Jaket', 'Hoodie', 'Polo']
-  const DISCOUNT_CODES = { 'SAVE10': 0.10, 'SAVE20': 0.20, 'SAVE50': 0.50 }
 
   const filteredProducts = products.filter(p => {
     const matchCategory = selectedCategory === 'semua' || p.category === selectedCategory
@@ -211,17 +177,20 @@ function CustomerDashboard({ user, handleLogout, products, orders, onRefresh }) 
     return matchCategory && matchSearch
   })
 
-  const addToCart = (product) => {
+  const addToCart = (product, qty = 1) => {
     const existingItem = cart.find(item => item.id === product.id)
-    if (existingItem && existingItem.qty < product.stock) {
-      existingItem.qty += 1
-      toastManager.info(`${product.name} ditambah ke keranjang`)
-    } else if (!existingItem && product.stock > 0) {
-      cart.push({ ...product, qty: 1 })
-      toastManager.success(`${product.name} ditambah ke keranjang`)
-    } else if (!existingItem) {
-      toastManager.warning(`${product.name} sudah habis`)
-      return
+    if (existingItem) {
+      if (existingItem.qty + qty <= product.stock) {
+        existingItem.qty += qty
+        toastManager.info(`${qty}x ${product.name} ditambah ke keranjang`)
+      } else {
+        toastManager.warning('Stok tidak mencukupi untuk jumlah tersebut')
+      }
+    } else if (product.stock >= qty) {
+      cart.push({ ...product, qty: qty })
+      toastManager.success(`${qty}x ${product.name} ditambah ke keranjang`)
+    } else {
+      toastManager.warning('Stok tidak mencukupi')
     }
     setCart([...cart])
   }
@@ -232,6 +201,9 @@ function CustomerDashboard({ user, handleLogout, products, orders, onRefresh }) 
       const product = products.find(p => p.id === productId)
       if (qty > 0 && qty <= product.stock) {
         item.qty = qty
+      } else if (qty <= 0) {
+        removeFromCart(productId)
+        return
       }
     }
     setCart([...cart])
@@ -241,325 +213,317 @@ function CustomerDashboard({ user, handleLogout, products, orders, onRefresh }) 
     setCart(cart.filter(c => c.id !== productId))
   }
 
-  const getCartSubtotal = () => {
-    return cart.reduce((total, item) => total + (item.price * item.qty), 0)
-  }
+  const getCartSubtotal = () => cart.reduce((total, item) => total + (item.price * item.qty), 0)
+  const getCartTotal = () => getCartSubtotal() - discountAmount
 
-  const applyDiscount = () => {
-    const code = checkoutForm.discount_code.toUpperCase()
-    if (DISCOUNT_CODES[code]) {
-      const subtotal = getCartSubtotal()
-      setDiscountAmount(subtotal * DISCOUNT_CODES[code])
-    }
-  }
-
-  const getCartTotal = () => {
-    return getCartSubtotal() - discountAmount
-  }
-
-  const handleCheckout = async () => {
-    const validation = validateCheckoutForm(checkoutForm)
-    if (!validation.valid) {
-      setCheckoutErrors(validation.errors)
-      toastManager.warning('Periksa kembali data pengiriman')
-      return
-    }
-
-    if (!window.confirm(`Konfirmasi pesanan dengan total Rp ${getCartTotal().toLocaleString('id-ID')}?`)) {
-      return
-    }
-
-    setCreatingOrder(true)
+  const handleCreateOrder = async (checkoutData) => {
     try {
       const orderData = {
+        ...checkoutData,
         items: cart,
-        address: checkoutForm.address,
-        phone: checkoutForm.phone,
-        payment_method: checkoutForm.payment_method,
-        discount_code: checkoutForm.discount_code,
         total: getCartTotal(),
       }
-
       await api.createOrder(orderData)
       toastManager.success('Order berhasil dibuat!')
       setCart([])
-      setShowCheckout(false)
-      setCheckoutForm({ address: '', phone: '', payment_method: 'transfer', discount_code: '' })
-      setCheckoutErrors({})
-      setDiscountAmount(0)
       onRefresh()
+      return true
     } catch (error) {
       toastManager.error('Gagal membuat order: ' + error.message)
-    } finally {
-      setCreatingOrder(false)
+      throw error
     }
   }
 
   return (
-    <div className="dashboard-container">
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <h2>👕 Toko Baju</h2>
-          <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>Customer</p>
-        </div>
+    <div className="customer-dashboard-premium animate-fade-in">
+      <Navbar
+        user={user}
+        cartCount={cart.length}
+        onCartClick={() => setShowCart(true)}
+        activeMenu={activeMenu}
+        setActiveMenu={setActiveMenu}
+        onLogout={handleLogout}
+      />
 
-        <nav className="sidebar-nav">
-          <button className={`nav-item ${activeMenu === 'shop' ? 'active' : ''}`} onClick={() => setActiveMenu('shop')}>🛍️ Belanja</button>
-          <button className={`nav-item ${activeMenu === 'orders' ? 'active' : ''}`} onClick={() => setActiveMenu('orders')}>📦 Pesanan Saya</button>
-          <button className={`nav-item ${activeMenu === 'profile' ? 'active' : ''}`} onClick={() => setActiveMenu('profile')}>👤 Profil</button>
-        </nav>
+      <main className="container main-layout-premium">
+        {activeMenu === 'shop' && (
+          <div className="shop-section animate-slide-up">
+            <Hero />
 
-        <button className="logout-btn" onClick={handleLogout}>🚪 Logout</button>
-      </aside>
-
-      <main className="main-content">
-        <header className="top-bar">
-          {activeMenu === 'shop' && (
-            <div className="search-bar">
-              <input type="text" placeholder="Cari produk..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-            </div>
-          )}
-          <div className="user-info">
-            <span>👤 {user.name}</span>
-            {activeMenu === 'shop' && (
-              <button onClick={() => setShowCart(!showCart)} style={{ marginLeft: '10px', background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>
-                🛒 ({cart.length})
-              </button>
-            )}
-          </div>
-        </header>
-
-        <div className="content">
-          {activeMenu === 'shop' && <CustomerShop products={filteredProducts} categories={CATEGORIES} selectedCategory={selectedCategory} onSelectCategory={setSelectedCategory} onAddToCart={addToCart} />}
-          {activeMenu === 'orders' && <CustomerOrders orders={orders.filter(o => o.user_id === user.id)} />}
-          {activeMenu === 'profile' && <CustomerProfile user={user} />}
-        </div>
-
-        {activeMenu === 'shop' && showCart && (
-          <div className="cart-sidebar">
-            <h3>🛒 Keranjang</h3>
-            {cart.length === 0 ? (
-              <p>Keranjang kosong</p>
-            ) : (
-              <>
-                {cart.map(item => (
-                  <div key={item.id} style={{ marginBottom: '10px', padding: '10px', borderBottom: '1px solid #eee' }}>
-                    <p><strong>{item.name}</strong></p>
-                    <p>Rp {Number(item.price).toLocaleString('id-ID')}</p>
-                    <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
-                      <button onClick={() => updateCartQty(item.id, item.qty - 1)}>−</button>
-                      <span style={{ flex: 1, textAlign: 'center' }}>{item.qty}</span>
-                      <button onClick={() => updateCartQty(item.id, item.qty + 1)}>+</button>
-                      <button onClick={() => removeFromCart(item.id)} style={{ background: 'red', color: 'white' }}>🗑️</button>
-                    </div>
-                  </div>
-                ))}
-                <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '2px solid #667eea' }}>
-                  <p>Subtotal: Rp {getCartSubtotal().toLocaleString('id-ID')}</p>
-                  {discountAmount > 0 && <p style={{ color: 'green' }}>Diskon: -Rp {discountAmount.toLocaleString('id-ID')}</p>}
-                  <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#667eea' }}>Total: Rp {getCartTotal().toLocaleString('id-ID')}</p>
-                  <button onClick={() => setShowCheckout(true)} style={{ width: '100%', padding: '10px', background: 'linear-gradient(135deg, #667eea, #764ba2)', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', marginTop: '10px' }}>Checkout</button>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {showCheckout && (
-          <Modal
-            isOpen={showCheckout}
-            title="📋 Checkout"
-            onClose={() => setShowCheckout(false)}
-            onSubmit={handleCheckout}
-            submitText="✓ Konfirmasi Pesanan"
-            isLoading={creatingOrder}
-          >
-            <FormTextarea
-              label="Alamat Pengiriman"
-              name="address"
-              value={checkoutForm.address}
-              onChange={handleCheckoutChange}
-              placeholder="Masukkan alamat lengkap"
-              error={checkoutErrors.address}
-              required
-            />
-
-            <FormInput
-              label="Nomor Telepon"
-              type="tel"
-              name="phone"
-              value={checkoutForm.phone}
-              onChange={handleCheckoutChange}
-              placeholder="08xxxxxxxxxx"
-              error={checkoutErrors.phone}
-              required
-            />
-
-            <FormSelect
-              label="Metode Pembayaran"
-              name="payment_method"
-              value={checkoutForm.payment_method}
-              onChange={handleCheckoutChange}
-              options={[
-                { value: 'transfer', label: 'Transfer Bank' },
-                { value: 'cod', label: 'COD (Bayar Ditempat)' },
-                { value: 'ewallet', label: 'E-Wallet' }
-              ]}
-              required
-            />
-
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Kode Diskon (Opsional)</label>
-              <div style={{ display: 'flex', gap: '8px' }}>
+            <div className="shop-controls">
+              <div className="search-box-premium">
+                <span className="search-icon">🔍</span>
                 <input
                   type="text"
-                  name="discount_code"
-                  value={checkoutForm.discount_code}
-                  onChange={handleCheckoutChange}
-                  placeholder="SAVE10, SAVE20, SAVE50"
-                  style={{ flex: 1, padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '14px' }}
+                  placeholder="Cari gaya favoritmu..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                <button
-                  onClick={applyDiscount}
-                  style={{ padding: '8px 16px', background: '#667eea', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px', whiteSpace: 'nowrap' }}
-                >
-                  Terapkan
-                </button>
+              </div>
+
+              <div className="category-tabs-premium">
+                {CATEGORIES.map(cat => (
+                  <button
+                    key={cat}
+                    className={`cat-tab ${selectedCategory === cat ? 'active' : ''}`}
+                    onClick={() => setSelectedCategory(cat)}
+                  >
+                    {cat}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div style={{ padding: '12px', background: '#f5f5f5', borderRadius: '5px', marginBottom: '15px' }}>
-              <p style={{ margin: '5px 0' }}>Subtotal: Rp {getCartSubtotal().toLocaleString('id-ID')}</p>
-              {discountAmount > 0 && <p style={{ margin: '5px 0', color: 'green' }}>Diskon: -Rp {discountAmount.toLocaleString('id-ID')}</p>}
-              <p style={{ margin: '5px 0', fontSize: '16px', fontWeight: 'bold', color: '#667eea' }}>Total: Rp {getCartTotal().toLocaleString('id-ID')}</p>
-            </div>
-          </Modal>
+            <CustomerShop
+              products={filteredProducts}
+              onAddToCart={addToCart}
+            />
+          </div>
         )}
+
+        {activeMenu === 'orders' && <CustomerOrders orders={orders.filter(o => o.user_id === user.id)} />}
+        {activeMenu === 'profile' && <CustomerProfile user={user} />}
       </main>
+
+      {/* Modern Cart Sidebar */}
+      {showCart && (
+        <div className="cart-overlay-premium" onClick={() => setShowCart(false)}>
+          <div className="cart-slide-panel" onClick={e => e.stopPropagation()}>
+            <div className="cart-panel-header">
+              <h3>🛒 Keranjang Saya</h3>
+              <button className="btn-close-cart" onClick={() => setShowCart(false)}>✕</button>
+            </div>
+
+            <div className="cart-panel-body">
+              {cart.length === 0 ? (
+                <div className="empty-cart flex-center" style={{ height: '100%', flexDirection: 'column' }}>
+                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>🛍️</div>
+                  <p>Keranjang masih kosong nih.</p>
+                  <button className="btn-primary" style={{ marginTop: '20px' }} onClick={() => setShowCart(false)}>Mulai Belanja</button>
+                </div>
+              ) : (
+                <>
+                  <div className="cart-items-scroll">
+                    {cart.map(item => (
+                      <div key={item.id} className="cart-item-mini">
+                        <img src={item.image || '/vite.svg'} alt={item.name} />
+                        <div className="cart-item-info">
+                          <h4>{item.name}</h4>
+                          <p>Rp {Number(item.price).toLocaleString('id-ID')}</p>
+                          <div className="qty-ctrl-mini">
+                            <button onClick={() => updateCartQty(item.id, item.qty - 1)}>−</button>
+                            <span>{item.qty}</span>
+                            <button onClick={() => updateCartQty(item.id, item.qty + 1)}>+</button>
+                          </div>
+                        </div>
+                        <button className="btn-del-mini" onClick={() => removeFromCart(item.id)}>🗑️</button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="cart-panel-footer">
+                    <div className="cart-summary-line">
+                      <span>Subtotal</span>
+                      <strong>Rp {getCartSubtotal().toLocaleString('id-ID')}</strong>
+                    </div>
+                    <p className="cart-hint">Pajak dan ongkir dihitung saat checkout.</p>
+                    <button
+                      className="btn-checkout-premium"
+                      onClick={() => { setShowCart(false); setShowCheckout(true); }}
+                    >
+                      Checkout Sekarang
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCheckout && (
+        <Modal
+          isOpen={showCheckout}
+          onClose={() => setShowCheckout(false)}
+          title="Selesaikan Pesanan"
+          size="large"
+          hideFooter
+        >
+          <CheckoutFlow
+            cart={cart}
+            onUpdateQty={updateCartQty}
+            onRemove={removeFromCart}
+            onClose={() => setShowCheckout(false)}
+            onSubmit={handleCreateOrder}
+            subtotal={getCartSubtotal()}
+            discount={discountAmount}
+            total={getCartTotal()}
+            initialData={{
+              address: user.address,
+              phone: user.phone
+            }}
+          />
+        </Modal>
+      )}
     </div>
   )
 }
 
-function CustomerShop({ products, categories, selectedCategory, onSelectCategory, onAddToCart }) {
+function CustomerShop({ products, onAddToCart }) {
   const [selectedProduct, setSelectedProduct] = useState(null)
-  const [imageErrors, setImageErrors] = useState({})
+  const [detailQty, setDetailQty] = useState(1)
+  const [selectedSize, setSelectedSize] = useState('M')
 
-  const handleImageError = (id) => {
-    setImageErrors(prev => ({ ...prev, [id]: true }))
+  const handleOpenDetail = (product) => {
+    setSelectedProduct(product)
+    setDetailQty(1)
+    setSelectedSize('M')
+  }
+
+  const handleAddToCartWithQty = (product) => {
+    onAddToCart({ ...product, size: selectedSize }, detailQty);
+    setSelectedProduct(null);
   }
 
   return (
     <>
-      <div style={{ marginBottom: '25px' }}>
-        <h3 style={{ marginTop: '0', marginBottom: '15px' }}>📁 Kategori:</h3>
-        <div className="category-filter">
-          {categories.map(cat => (
-            <button
-              key={cat}
-              className={`category-btn ${selectedCategory === cat ? 'active' : ''}`}
-              onClick={() => onSelectCategory(cat)}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {products.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px 20px', color: '#999' }}>
-          <p style={{ fontSize: '16px' }}>Tidak ada produk yang ditemukan</p>
+        <div className="flex-center" style={{ padding: '80px 0', flexDirection: 'column', color: 'var(--gray-400)' }}>
+          <div style={{ fontSize: '64px' }}>🧥</div>
+          <h3>Produk Tidak Ditemukan</h3>
+          <p>Coba gunakan kata kunci atau kategori lain.</p>
         </div>
       ) : (
-        <div className="products-grid">
+        <div className="products-grid-premium">
           {products.map((product, index) => (
-            <div 
+            <ProductCard
               key={product.id}
-              className="product-card"
-              style={{ animationDelay: `${index * 0.08}s` }}
-            >
-              <div 
-                className="product-image-container"
-                onClick={() => setSelectedProduct(product)}
-              >
-                {imageErrors[product.id] ? (
-                  <div className="product-image-placeholder">
-                    <div className="placeholder-text">{product.name}</div>
-                  </div>
-                ) : (
-                  <img
-                    src={getProductImage(product)}
-                    alt={product.name}
-                    className="product-image"
-                    onError={() => handleImageError(product.id)}
-                  />
-                )}
-              </div>
-              
-              <div className="product-info">
-                <div className="product-details">
-                  <h3 className="product-name" onClick={() => setSelectedProduct(product)}>
-                    {product.name}
-                  </h3>
-                  <p className="product-category">{product.category}</p>
-                  <p className="product-price">Rp {Number(product.price).toLocaleString('id-ID')}</p>
-                  <p className="product-stock">
-                    {product.stock === 0 ? '❌ Habis' : product.stock <= 5 ? `⚠️ Stok Terbatas (${product.stock})` : `✓ Stok: ${product.stock}`}
-                  </p>
-                </div>
-                
-                <button 
-                  onClick={() => onAddToCart(product)}
-                  disabled={product.stock === 0}
-                  className="btn-primary"
-                  style={{ width: '100%', opacity: product.stock === 0 ? 0.5 : 1, cursor: product.stock === 0 ? 'not-allowed' : 'pointer' }}
-                >
-                  🛒 Tambah Keranjang
-                </button>
-              </div>
-            </div>
+              product={product}
+              index={index}
+              onAddToCart={onAddToCart}
+              onClick={() => handleOpenDetail(product)}
+            />
           ))}
         </div>
       )}
 
       {selectedProduct && (
-        <div className="modal-overlay" onClick={() => setSelectedProduct(null)}>
-          <div className="modal-content modal-content-large" onClick={e => e.stopPropagation()}>
-            <button className="btn-close-modal" onClick={() => setSelectedProduct(null)}>✕</button>
-            <div className="product-detail-layout">
-              <div className="detail-image">
-                {imageErrors[selectedProduct.id] ? (
-                  <div className="product-image-placeholder" style={{ height: '400px' }}>
-                    <div className="placeholder-text">{selectedProduct.name}</div>
-                  </div>
-                ) : (
-                  <img 
-                    src={getProductImage(selectedProduct)}
-                    alt={selectedProduct.name}
-                    style={{ width: '100%', borderRadius: '8px' }}
-                    onError={() => handleImageError(selectedProduct.id)}
-                  />
+        <Modal
+          isOpen={!!selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+          title="Detail Produk"
+          size="large"
+          hideFooter
+        >
+          <div className="product-detail-premium animate-fade-in">
+            <div className="detail-media">
+              <div className="media-main-wrapper">
+                <img src={getProductImage(selectedProduct)} alt={selectedProduct.name} className="main-image-premium" />
+                <div className="image-overlay-tags">
+                  <span className="tag-premium">Koleksi Terbatas</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="detail-info-premium">
+              <div className="detail-header-tags">
+                <span className="detail-cat-badge">{selectedProduct.category}</span>
+                {selectedProduct.stock < 10 && selectedProduct.stock > 0 && (
+                  <span className="low-stock-pill">Hampir Habis! Sisa {selectedProduct.stock} lagi</span>
                 )}
               </div>
-              <div className="detail-info">
-                <h2 style={{ marginTop: '0', marginBottom: '10px', fontSize: '28px', color: '#333' }}>{selectedProduct.name}</h2>
-                <p style={{ color: '#999', marginBottom: '15px', fontSize: '14px', fontWeight: '600', textTransform: 'uppercase' }}>{selectedProduct.category}</p>
-                <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#667eea', marginBottom: '20px' }}>Rp {Number(selectedProduct.price).toLocaleString('id-ID')}</p>
-                <p style={{ lineHeight: '1.6', marginBottom: '20px', color: '#666', fontSize: '15px' }}>{selectedProduct.description}</p>
-                <p style={{ marginBottom: '25px', fontSize: '15px', fontWeight: '600' }}>
-                  {selectedProduct.stock === 0 ? '❌ Produk Habis' : `✓ Stok Tersedia: ${selectedProduct.stock}`}
-                </p>
-                <button 
-                  onClick={() => { onAddToCart(selectedProduct); setSelectedProduct(null) }}
+              
+              <h2 className="detail-title">{selectedProduct.name}</h2>
+              
+              <div className="detail-price-section">
+                <div className="price-tag-wrapper">
+                  <span className="currency-symbol">Rp</span>
+                  <span className="price-value">{Number(selectedProduct.price).toLocaleString('id-ID')}</span>
+                </div>
+                <div className="rating-mini">
+                  <span className="stars">★★★★★</span>
+                  <span className="review-count">(124 Review)</span>
+                </div>
+              </div>
+
+              <div className="detail-section-divider"></div>
+
+              <div className="detail-description-box">
+                <h4>Deskripsi</h4>
+                <p className="detail-desc">{selectedProduct.description || 'Produk premium dengan kualitas terbaik. Didesain untuk kenyamanan dan gaya maksimal bagi Anda.'}</p>
+              </div>
+
+              <div className="detail-specs-grid">
+                <div className="spec-item">
+                  <span className="spec-label">Bahan</span>
+                  <span className="spec-value">100% Katun Organik</span>
+                </div>
+                <div className="spec-item">
+                  <span className="spec-label">Potongan</span>
+                  <span className="spec-value">Tailored Fit</span>
+                </div>
+                <div className="spec-item size-spec">
+                  <span className="spec-label">Ukuran</span>
+                  <div className="size-options-mini">
+                    {['S', 'M', 'L', 'XL'].map(size => (
+                      <span 
+                        key={size} 
+                        className={`size-pill ${selectedSize === size ? 'active' : ''}`}
+                        onClick={() => setSelectedSize(size)}
+                      >
+                        {size}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="detail-inventory-status">
+                <div className={`status-dot ${selectedProduct.stock > 0 ? 'active' : ''}`}></div>
+                <span className="status-text">
+                  {selectedProduct.stock > 0 ? `Stok Tersedia & Siap Kirim` : 'Saat Ini Tidak Tersedia'}
+                </span>
+              </div>
+
+              <div className="detail-actions-panel">
+                <div className="qty-selector-premium">
+                  <button 
+                    className="qty-btn" 
+                    onClick={() => setDetailQty(Math.max(1, detailQty - 1))}
+                  >-</button>
+                  <span className="qty-value">{detailQty}</span>
+                  <button 
+                    className="qty-btn" 
+                    onClick={() => setDetailQty(Math.min(selectedProduct.stock, detailQty + 1))}
+                  >+</button>
+                </div>
+                
+                <button
+                  className="btn-add-detail-premium"
                   disabled={selectedProduct.stock === 0}
-                  className="btn-primary"
-                  style={{ width: '100%', padding: '14px', fontSize: '16px', opacity: selectedProduct.stock === 0 ? 0.5 : 1 }}
+                  onClick={() => handleAddToCartWithQty(selectedProduct)}
                 >
-                  ✓ Tambah ke Keranjang
+                  {selectedProduct.stock === 0 ? 'Stok Habis' : 'Tambah ke Keranjang'}
                 </button>
+              </div>
+
+              <div className="trust-footer-mini">
+                <div className="trust-item">
+                  <span>🚚</span>
+                  <small>Gratis Ongkir</small>
+                </div>
+                <div className="trust-item">
+                  <span>🔄</span>
+                  <small>Return 30 Hari</small>
+                </div>
+                <div className="trust-item">
+                  <span>🔒</span>
+                  <small>Garansi Produk</small>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </>
   )
@@ -569,77 +533,193 @@ function CustomerOrders({ orders }) {
   const [selectedOrder, setSelectedOrder] = useState(null)
 
   if (!orders || orders.length === 0) {
-    return <p>Anda belum memiliki pesanan</p>
+    return (
+      <div className="empty-orders glass animate-fade-in flex-center" style={{ padding: '60px', flexDirection: 'column' }}>
+        <div style={{ fontSize: '64px', marginBottom: '20px' }}>📦</div>
+        <h3>Belum Ada Pesanan</h3>
+        <p>Ayo mulai belanja dan temukan gaya favoritmu!</p>
+      </div>
+    )
   }
 
   return (
-    <>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr style={{ background: '#f5f5f5' }}>
-            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>ID Pesanan</th>
-            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>Tanggal</th>
-            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>Total</th>
-            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>Status</th>
-            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>Aksi</th>
-          </tr>
-        </thead>
-        <tbody>
-          {orders.map(order => (
-            <tr key={order.id} style={{ borderBottom: '1px solid #eee' }}>
-              <td style={{ padding: '12px' }}>#{order.id}</td>
-              <td style={{ padding: '12px' }}>{new Date(order.created_at).toLocaleDateString('id-ID')}</td>
-              <td style={{ padding: '12px' }}>Rp {order.total.toLocaleString('id-ID')}</td>
-              <td style={{ padding: '12px' }}>
-                <span style={{ padding: '5px 10px', borderRadius: '20px', fontSize: '12px', background: order.status === 'completed' ? '#d4edda' : order.status === 'processing' ? '#fff3cd' : '#f8d7da', color: order.status === 'completed' ? '#155724' : order.status === 'processing' ? '#856404' : '#721c24' }}>
-                  {order.status === 'completed' ? '✓ Selesai' : order.status === 'processing' ? '⏳ Diproses' : '⏳ Menunggu'}
-                </span>
-              </td>
-              <td style={{ padding: '12px' }}>
-                <button onClick={() => setSelectedOrder(order)} style={{ background: 'none', border: 'none', color: '#667eea', cursor: 'pointer' }}>
-                  Lihat Detail
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="orders-section animate-slide-up">
+      <h2 className="section-title-premium">Riwayat Pesanan</h2>
+      <div className="orders-grid-premium">
+        {orders.map(order => (
+          <div key={order.id} className="order-card-premium" onClick={() => setSelectedOrder(order)}>
+            <div className="order-card-header">
+              <span className="order-id">ORD-{order.id.toString().padStart(5, '0')}</span>
+              <span className={`badge-premium badge-${order.status}`}>
+                {order.status === 'completed' ? 'Selesai' : order.status === 'processing' ? 'Diproses' : 'Menunggu'}
+              </span>
+            </div>
+            <div className="order-card-body">
+              <div className="order-meta-info">
+                <span className="order-date">{new Date(order.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                <span className="order-items-count">{order.items?.length || 0} Produk</span>
+              </div>
+              <div className="order-total-amount">Rp {order.total.toLocaleString('id-ID')}</div>
+            </div>
+            <div className="order-card-footer">
+              <button className="btn-detail-order">Lihat Detail</button>
+            </div>
+          </div>
+        ))}
+      </div>
 
       {selectedOrder && (
-        <div style={{ marginTop: '20px', padding: '15px', background: '#f9f9f9', borderRadius: '8px', border: '1px solid #ddd' }}>
-          <h3>Detail Pesanan #{selectedOrder.id}</h3>
-          <p><strong>Tanggal:</strong> {new Date(selectedOrder.created_at).toLocaleDateString('id-ID')}</p>
-          <p><strong>Status:</strong> <span style={{ padding: '5px 10px', borderRadius: '20px', background: selectedOrder.status === 'completed' ? '#d4edda' : selectedOrder.status === 'processing' ? '#fff3cd' : '#f8d7da', color: selectedOrder.status === 'completed' ? '#155724' : selectedOrder.status === 'processing' ? '#856404' : '#721c24' }}>
-            {selectedOrder.status === 'completed' ? '✓ Selesai' : selectedOrder.status === 'processing' ? '⏳ Diproses' : '⏳ Menunggu'}
-          </span></p>
-          <p><strong>Alamat:</strong> {selectedOrder.address}</p>
-          <p><strong>Telepon:</strong> {selectedOrder.phone}</p>
-          <p><strong>Metode Pembayaran:</strong> {selectedOrder.payment_method === 'transfer' ? 'Transfer Bank' : selectedOrder.payment_method === 'cod' ? 'COD' : 'E-Wallet'}</p>
-
-          <h4>Item Pesanan:</h4>
-          {selectedOrder.items && selectedOrder.items.map(item => (
-            <div key={item.id} style={{ padding: '10px', borderBottom: '1px solid #ddd' }}>
-              <p><strong>{item.name}</strong> x {item.qty} = Rp {(item.price * item.qty).toLocaleString('id-ID')}</p>
+        <Modal
+          isOpen={!!selectedOrder}
+          onClose={() => setSelectedOrder(null)}
+          title={`Detail Pesanan #ORD-${selectedOrder.id.toString().padStart(5, '0')}`}
+          size="medium"
+          hideFooter
+        >
+          <div className="order-detail-premium">
+            <div className="detail-status-banner">
+              Status: <strong>{selectedOrder.status.toUpperCase()}</strong>
             </div>
-          ))}
 
-          <p style={{ marginTop: '15px', fontSize: '18px', fontWeight: 'bold', color: '#667eea' }}>Total: Rp {selectedOrder.total.toLocaleString('id-ID')}</p>
-          <button onClick={() => setSelectedOrder(null)} style={{ marginTop: '10px', padding: '8px 15px', background: '#667eea', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Tutup</button>
-        </div>
+            <div className="detail-section">
+              <h4>📦 Daftar Produk</h4>
+              <div className="detail-items-list">
+                {selectedOrder.items?.map((item, i) => (
+                  <div key={i} className="detail-item-row">
+                    <span>{item.name} <small>x{item.qty}</small></span>
+                    <span>Rp {(item.price * item.qty).toLocaleString('id-ID')}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="detail-section">
+              <h4>📍 Info Pengiriman</h4>
+              <p><strong>Penerima:</strong> {selectedOrder.phone}</p>
+              <p><strong>Alamat:</strong> {selectedOrder.address}</p>
+            </div>
+
+            <div className="detail-total-box">
+              <div className="total-label">Total Pembayaran</div>
+              <div className="total-value">Rp {selectedOrder.total.toLocaleString('id-ID')}</div>
+            </div>
+
+            <button className="btn-primary" style={{ width: '100%', marginTop: '20px' }} onClick={() => setSelectedOrder(null)}>Tutup</button>
+          </div>
+        </Modal>
       )}
-    </>
+    </div>
   )
 }
 
 function CustomerProfile({ user }) {
+  const [tab, setTab] = useState('info')
+  const [form, setForm] = useState({ name: user.name || '', phone: user.phone || '', address: user.address || '' })
+  const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirm_password: '' })
+  const [saving, setSaving] = useState(false)
+  const [avatarPreview, setAvatarPreview] = useState(user.avatar || null)
+
+  const handleFormChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
+  const handlePwChange = (e) => setPwForm({ ...pwForm, [e.target.name]: e.target.value })
+
+  const handleSaveProfile = async () => {
+    if (!form.name.trim()) { toastManager.warning('Nama tidak boleh kosong'); return }
+    setSaving(true)
+    try {
+      const result = await api.updateProfile(form)
+      // Update localStorage user
+      const stored = JSON.parse(localStorage.getItem('user') || '{}')
+      localStorage.setItem('user', JSON.stringify({ ...stored, name: result.user.name, phone: result.user.phone, address: result.user.address }))
+      toastManager.success('Profil berhasil disimpan!')
+    } catch (err) { toastManager.error(err.message) } finally { setSaving(false) }
+  }
+
+  const handleChangePassword = async () => {
+    if (!pwForm.current_password || !pwForm.new_password || !pwForm.confirm_password) { toastManager.warning('Semua field harus diisi'); return }
+    if (pwForm.new_password !== pwForm.confirm_password) { toastManager.warning('Password baru tidak cocok'); return }
+    if (pwForm.new_password.length < 6) { toastManager.warning('Password minimal 6 karakter'); return }
+    setSaving(true)
+    try {
+      await api.changePassword(pwForm)
+      toastManager.success('Password berhasil diubah!')
+      setPwForm({ current_password: '', new_password: '', confirm_password: '' })
+    } catch (err) { toastManager.error(err.message) } finally { setSaving(false) }
+  }
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    setAvatarPreview(URL.createObjectURL(file))
+    try {
+      const res = await api.uploadAvatar(file)
+      const stored = JSON.parse(localStorage.getItem('user') || '{}')
+      localStorage.setItem('user', JSON.stringify({ ...stored, avatar: res.avatar }))
+      toastManager.success('Foto profil diperbarui!')
+    } catch (err) { toastManager.error(err.message) }
+  }
+
+  const tabStyle = (active) => ({ padding: '8px 18px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: active ? '700' : '400', background: active ? '#667eea' : '#f0f0f0', color: active ? 'white' : '#333', marginRight: '8px' })
+
   return (
-    <div style={{ background: 'white', padding: '20px', borderRadius: '8px', maxWidth: '500px' }}>
-      <h2>👤 Profil Anda</h2>
-      <div style={{ marginTop: '20px' }}>
-        <p><strong>Nama:</strong> {user.name}</p>
-        <p><strong>Email:</strong> {user.email}</p>
-        <p><strong>Role:</strong> {user.role === 'customer' ? 'Pelanggan' : 'Admin'}</p>
+    <div style={{ maxWidth: '550px' }}>
+      <h2 style={{ marginBottom: '20px' }}>👤 Profil Saya</h2>
+      <div style={{ marginBottom: '20px' }}>
+        <button style={tabStyle(tab === 'info')} onClick={() => setTab('info')}>ℹ️ Info</button>
+        <button style={tabStyle(tab === 'password')} onClick={() => setTab('password')}>🔒 Password</button>
       </div>
+
+      {tab === 'info' && (
+        <div style={{ background: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+          {/* Avatar */}
+          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+              <div style={{ width: '90px', height: '90px', borderRadius: '50%', background: avatarPreview ? 'transparent' : 'linear-gradient(135deg, #667eea, #764ba2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '36px', overflow: 'hidden', margin: '0 auto' }}>
+                {avatarPreview ? <img src={avatarPreview} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '👤'}
+              </div>
+              <label htmlFor="avatar-upload" style={{ position: 'absolute', bottom: '0', right: '0', background: '#667eea', color: 'white', border: 'none', borderRadius: '50%', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '14px' }}>✏️
+                <input id="avatar-upload" type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
+              </label>
+            </div>
+            <p style={{ marginTop: '8px', fontSize: '12px', color: '#999' }}>Klik ikon edit untuk ubah foto</p>
+          </div>
+
+          <div style={{ marginBottom: '14px' }}>
+            <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '14px' }}>Nama Lengkap *</label>
+            <input name="name" value={form.name} onChange={handleFormChange} style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
+          </div>
+          <div style={{ marginBottom: '14px' }}>
+            <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '14px' }}>Email</label>
+            <input value={user.email} disabled style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', background: '#f5f5f5', boxSizing: 'border-box' }} />
+            <p style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>Email tidak dapat diubah</p>
+          </div>
+          <div style={{ marginBottom: '14px' }}>
+            <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '14px' }}>Nomor Telepon</label>
+            <input name="phone" value={form.phone} onChange={handleFormChange} placeholder="08xxxxxxxxxx" style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
+          </div>
+          <div style={{ marginBottom: '18px' }}>
+            <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '14px' }}>Alamat</label>
+            <textarea name="address" value={form.address} onChange={handleFormChange} rows={3} placeholder="Alamat lengkap Anda" style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', resize: 'vertical', boxSizing: 'border-box' }} />
+          </div>
+          <button onClick={handleSaveProfile} disabled={saving} style={{ width: '100%', padding: '12px', background: 'linear-gradient(135deg, #667eea, #764ba2)', color: 'white', border: 'none', borderRadius: '8px', cursor: saving ? 'not-allowed' : 'pointer', fontWeight: '600', fontSize: '15px' }}>
+            {saving ? 'Menyimpan...' : '💾 Simpan Profil'}
+          </button>
+        </div>
+      )}
+
+      {tab === 'password' && (
+        <div style={{ background: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+          <h3 style={{ marginBottom: '16px' }}>🔒 Ganti Password</h3>
+          {['current_password', 'new_password', 'confirm_password'].map((field, i) => (
+            <div key={field} style={{ marginBottom: '14px' }}>
+              <label style={{ display: 'block', fontWeight: '600', marginBottom: '6px', fontSize: '14px' }}>{['Password Lama *', 'Password Baru *', 'Konfirmasi Password Baru *'][i]}</label>
+              <input type="password" name={field} value={pwForm[field]} onChange={handlePwChange} style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
+            </div>
+          ))}
+          <button onClick={handleChangePassword} disabled={saving} style={{ width: '100%', padding: '12px', background: 'linear-gradient(135deg, #e74c3c, #c0392b)', color: 'white', border: 'none', borderRadius: '8px', cursor: saving ? 'not-allowed' : 'pointer', fontWeight: '600', fontSize: '15px' }}>
+            {saving ? 'Memproses...' : '🔑 Ganti Password'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -655,11 +735,11 @@ function AdminDashboardContent({ products, orders }) {
   const [imageErrors, setImageErrors] = useState({})
   const [creatingProduct, setCreatingProduct] = useState(false)
 
-  const getTotalRevenue = () => orders.filter(o => o.status === 'completed').reduce((sum, o) => sum + o.total, 0)
+  const getTotalRevenue = () => orders.filter(o => o.status === 'completed').reduce((sum, o) => sum + Number(o.total), 0)
   const getTotalOrders = () => orders.length
   const getCompletedOrders = () => orders.filter(o => o.status === 'completed').length
   const getTotalProducts = () => products.length
-  const getTotalStock = () => products.reduce((sum, p) => sum + p.stock, 0)
+  const getTotalStock = () => products.reduce((sum, p) => sum + Number(p.stock), 0)
   const getLowStockCount = () => products.filter(p => p.stock <= 5).length
   const getBestSellers = () => {
     const sellersMap = {}
@@ -691,11 +771,11 @@ function AdminDashboardContent({ products, orders }) {
       toastManager.warning('Periksa kembali data produk')
       return
     }
-    
+
     if (!window.confirm(`Tambahkan produk "${formData.name}" dengan harga Rp ${parseFloat(formData.price).toLocaleString('id-ID')}?`)) {
       return
     }
-    
+
     setCreatingProduct(true)
     try {
       await api.createProduct({
@@ -794,51 +874,55 @@ function AdminDashboardContent({ products, orders }) {
 
       {activeTab === 'dashboard' && (
         <>
-          <h2 style={{ marginBottom: '30px' }}>� Semua Produk</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '30px' }}>
-            {products.length === 0 ? (
-              <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#999' }}>Belum ada produk</p>
-            ) : (
-              products.map((product) => (
-                <div key={product.id} style={{ 
-                  background: 'white', 
-                  borderRadius: '12px', 
-                  overflow: 'hidden',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                  transition: 'all 0.3s ease',
-                  border: '1px solid #f0f0f0',
-                  cursor: 'pointer',
-                  ':hover': {
-                    boxShadow: '0 8px 20px rgba(102, 126, 234, 0.2)'
-                  }
-                }}>
-                  <div style={{ position: 'relative' }}>
-                    <img src={getProductImage(product)} alt={product.name} style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }} />
-                    <div style={{
-                      position: 'absolute',
-                      top: '10px',
-                      right: '10px',
-                      background: product.stock <= 5 ? '#e74c3c' : '#27ae60',
-                      color: 'white',
-                      padding: '8px 12px',
-                      borderRadius: '20px',
-                      fontSize: '12px',
-                      fontWeight: 'bold'
-                    }}>
-                      {product.stock <= 5 ? `⚠️ ${product.stock}` : `✓ ${product.stock}`}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '16px', marginBottom: '28px' }}>
+            {[
+              { label: 'Total Pendapatan', value: `Rp ${getTotalRevenue().toLocaleString('id-ID')}`, icon: '💰', color: '#27ae60' },
+              { label: 'Total Pesanan', value: getTotalOrders(), icon: '📦', color: '#2980b9' },
+              { label: 'Pesanan Selesai', value: getCompletedOrders(), icon: '✅', color: '#8e44ad' },
+              { label: 'Total Produk', value: getTotalProducts(), icon: '👕', color: '#e67e22' },
+              { label: 'Total Stok', value: getTotalStock(), icon: '📊', color: '#16a085' },
+              { label: 'Stok Menipis', value: getLowStockCount(), icon: '⚠️', color: getLowStockCount() > 0 ? '#e74c3c' : '#27ae60' },
+            ].map(card => (
+              <div key={card.label} style={{ background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', borderLeft: `4px solid ${card.color}` }}>
+                <div style={{ fontSize: '22px', marginBottom: '8px' }}>{card.icon}</div>
+                <div style={{ fontSize: '20px', fontWeight: '800', color: card.color }}>{card.value}</div>
+                <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>{card.label}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div style={{ background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+              <h3 style={{ marginBottom: '16px', fontSize: '15px' }}>🏆 Produk Terlaris</h3>
+              {getBestSellers().length === 0
+                ? <p style={{ color: '#999', fontSize: '13px' }}>Belum ada data penjualan</p>
+                : getBestSellers().map((item, i) => (
+                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #f5f5f5' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ width: '22px', height: '22px', borderRadius: '50%', background: i === 0 ? '#ffd700' : i === 1 ? '#c0c0c0' : '#cd7f32', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold', flexShrink: 0 }}>{i + 1}</span>
+                      <span style={{ fontSize: '13px' }}>{item.name}</span>
                     </div>
+                    <span style={{ fontSize: '13px', color: '#667eea', fontWeight: '700', flexShrink: 0 }}>{item.total} terjual</span>
                   </div>
-                  <div style={{ padding: '16px' }}>
-                    <h3 style={{ margin: '0 0 8px 0', fontSize: '15px', color: '#222', fontWeight: '700' }}>{product.name}</h3>
-                    <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#999', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{product.category}</p>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #f0f0f0' }}>
-                      <span style={{ fontSize: '12px', color: '#666' }}>Harga:</span>
-                      <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#667eea' }}>Rp {Number(product.price).toLocaleString('id-ID')}</span>
-                    </div>
+                ))
+              }
+            </div>
+            <div style={{ background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+              <h3 style={{ marginBottom: '16px', fontSize: '15px' }}>🕐 Pesanan Terbaru</h3>
+              {orders.slice(0, 5).map(order => (
+                <div key={order.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #f5f5f5' }}>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: '600' }}>#{order.id} — {order.customer_name || 'N/A'}</div>
+                    <div style={{ fontSize: '11px', color: '#999' }}>{new Date(order.created_at).toLocaleDateString('id-ID')}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#667eea' }}>Rp {Number(order.total).toLocaleString('id-ID')}</div>
+                    <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', background: order.status === 'completed' ? '#d4edda' : order.status === 'cancelled' ? '#f8d7da' : '#fff3cd', color: order.status === 'completed' ? '#155724' : order.status === 'cancelled' ? '#721c24' : '#856404' }}>
+                      {order.status === 'completed' ? 'Selesai' : order.status === 'processing' ? 'Diproses' : order.status === 'shipped' ? 'Dikirim' : order.status === 'cancelled' ? 'Dibatalkan' : 'Menunggu'}
+                    </span>
                   </div>
                 </div>
-              ))
-            )}
+              ))}
+            </div>
           </div>
         </>
       )}
@@ -1133,8 +1217,10 @@ function OrdersAdminContent({ orders, setOrders }) {
               <td style={{ padding: '12px' }}>{new Date(order.created_at).toLocaleDateString('id-ID')}</td>
               <td style={{ padding: '12px' }}>Rp {order.total.toLocaleString('id-ID')}</td>
               <td style={{ padding: '12px' }}>
-                <span style={{ padding: '5px 10px', borderRadius: '20px', fontSize: '12px', background: order.status === 'completed' ? '#d4edda' : order.status === 'processing' ? '#fff3cd' : '#f8d7da', color: order.status === 'completed' ? '#155724' : order.status === 'processing' ? '#856404' : '#721c24' }}>
-                  {order.status === 'completed' ? '✓ Selesai' : order.status === 'processing' ? '⏳ Diproses' : '⏳ Menunggu'}
+                <span className={`badge-premium badge-${order.status}`}>
+                  {order.status === 'completed' ? '✓ Selesai' :
+                    order.status === 'processing' ? '⏳ Diproses' :
+                      '⏳ Menunggu'}
                 </span>
               </td>
               <td style={{ padding: '12px' }}>
@@ -1159,6 +1245,11 @@ function OrdersAdminContent({ orders, setOrders }) {
           <p><strong>Pelanggan:</strong> {selectedOrder.customer_name || 'N/A'}</p>
           <p><strong>Email:</strong> {selectedOrder.customer_email || 'N/A'}</p>
           <p><strong>Tanggal:</strong> {new Date(selectedOrder.created_at).toLocaleDateString('id-ID')}</p>
+          <p><strong>Status:</strong> <span className={`badge-premium badge-${selectedOrder.status}`}>
+            {selectedOrder.status === 'completed' ? '✓ Selesai' :
+              selectedOrder.status === 'processing' ? '⏳ Diproses' :
+                '⏳ Menunggu'}
+          </span></p>
           <p><strong>Alamat:</strong> {selectedOrder.address}</p>
           <p><strong>Telepon:</strong> {selectedOrder.phone}</p>
           <p><strong>Metode Pembayaran:</strong> {selectedOrder.payment_method === 'transfer' ? 'Transfer Bank' : selectedOrder.payment_method === 'cod' ? 'COD' : 'E-Wallet'}</p>
@@ -1216,7 +1307,7 @@ function CustomersContent({ orders }) {
       // Handle both cases: customer_email or just email
       const email = order.customer_email || order.email || 'unknown'
       const name = order.customer_name || order.name || 'Unknown'
-      
+
       if (!customersMap.has(email)) {
         customersMap.set(email, {
           email,
@@ -1271,10 +1362,135 @@ function CustomersContent({ orders }) {
 }
 
 function SettingsContent() {
+  const [settings, setSettings] = useState(null)
+  const [discounts, setDiscounts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [tab, setTab] = useState('store')
+  const [newDiscount, setNewDiscount] = useState({ code: '', discount_type: 'percentage', discount_value: '', max_discount: '', max_uses: '', expires_at: '', description: '' })
+  const [addingDiscount, setAddingDiscount] = useState(false)
+
+  useEffect(() => {
+    Promise.all([api.getSettings(), api.getDiscountCodes()])
+      .then(([s, d]) => { setSettings(s); setDiscounts(d) })
+      .catch(err => toastManager.error('Gagal memuat pengaturan'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const handleChange = (e) => setSettings({ ...settings, [e.target.name]: e.target.value })
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await api.updateSettings(settings)
+      toastManager.success('Pengaturan berhasil disimpan!')
+    } catch (err) { toastManager.error(err.message) } finally { setSaving(false) }
+  }
+
+  const handleAddDiscount = async () => {
+    if (!newDiscount.code || !newDiscount.discount_value) { toastManager.warning('Kode dan nilai diskon harus diisi'); return }
+    setAddingDiscount(true)
+    try {
+      const result = await api.createDiscountCode({ ...newDiscount, discount_value: parseFloat(newDiscount.discount_value), max_discount: newDiscount.max_discount || null, max_uses: newDiscount.max_uses || null, expires_at: newDiscount.expires_at || null })
+      setDiscounts([result, ...discounts])
+      setNewDiscount({ code: '', discount_type: 'percentage', discount_value: '', max_discount: '', max_uses: '', expires_at: '', description: '' })
+      toastManager.success('Kode diskon berhasil dibuat!')
+    } catch (err) { toastManager.error(err.message) } finally { setAddingDiscount(false) }
+  }
+
+  const handleToggleDiscount = async (id, isActive) => {
+    try {
+      await api.toggleDiscountCode(id, !isActive)
+      setDiscounts(discounts.map(d => d.id === id ? { ...d, is_active: !isActive } : d))
+      toastManager.info(`Kode diskon ${!isActive ? 'diaktifkan' : 'dinonaktifkan'}`)
+    } catch (err) { toastManager.error(err.message) }
+  }
+
+  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Memuat pengaturan...</div>
+
+  const tabStyle = (active) => ({ padding: '8px 18px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: active ? '700' : '400', background: active ? '#667eea' : '#f0f0f0', color: active ? 'white' : '#333', marginRight: '8px', marginBottom: '20px' })
+  const inputStyle = { width: '100%', padding: '9px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box', marginTop: '5px' }
+  const labelStyle = { display: 'block', fontWeight: '600', fontSize: '13px', color: '#555' }
+
   return (
-    <div style={{ background: 'white', padding: '20px', borderRadius: '8px', maxWidth: '500px' }}>
-      <h2>⚙️ Pengaturan</h2>
-      <p style={{ marginTop: '20px', color: '#666' }}>Fitur pengaturan akan segera tersedia.</p>
+    <div style={{ maxWidth: '680px' }}>
+      <h2 style={{ marginBottom: '20px' }}>⚙️ Pengaturan Toko</h2>
+      <div style={{ marginBottom: '4px' }}>
+        <button style={tabStyle(tab === 'store')} onClick={() => setTab('store')}>🏪 Toko</button>
+        <button style={tabStyle(tab === 'discount')} onClick={() => setTab('discount')}>🎫 Kode Diskon</button>
+      </div>
+
+      {tab === 'store' && settings && (
+        <div style={{ background: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+          {[['store_name', 'Nama Toko'], ['store_email', 'Email Toko'], ['store_phone', 'Telepon Toko']].map(([name, label]) => (
+            <div key={name} style={{ marginBottom: '14px' }}>
+              <label style={labelStyle}>{label}</label>
+              <input name={name} value={settings[name] || ''} onChange={handleChange} style={inputStyle} />
+            </div>
+          ))}
+          <div style={{ marginBottom: '14px' }}>
+            <label style={labelStyle}>Deskripsi Toko</label>
+            <textarea name="store_description" value={settings.store_description || ''} onChange={handleChange} rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+          </div>
+          <div style={{ marginBottom: '14px' }}>
+            <label style={labelStyle}>Alamat Toko</label>
+            <textarea name="store_address" value={settings.store_address || ''} onChange={handleChange} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '18px' }}>
+            <div><label style={labelStyle}>Batas Stok Menipis</label><input type="number" name="low_stock_threshold" value={settings.low_stock_threshold || 5} onChange={handleChange} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Ongkos Kirim (Rp)</label><input type="number" name="shipping_cost" value={settings.shipping_cost || 0} onChange={handleChange} style={inputStyle} /></div>
+            <div><label style={labelStyle}>Gratis Ongkir {'>'} (Rp)</label><input type="number" name="free_shipping_min" value={settings.free_shipping_min || 300000} onChange={handleChange} style={inputStyle} /></div>
+          </div>
+          <button onClick={handleSave} disabled={saving} style={{ padding: '12px 28px', background: 'linear-gradient(135deg, #667eea, #764ba2)', color: 'white', border: 'none', borderRadius: '8px', cursor: saving ? 'not-allowed' : 'pointer', fontWeight: '600', fontSize: '15px' }}>
+            {saving ? 'Menyimpan...' : '💾 Simpan Pengaturan'}
+          </button>
+        </div>
+      )}
+
+      {tab === 'discount' && (
+        <div>
+          <div style={{ background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '20px' }}>
+            <h3 style={{ marginBottom: '16px' }}>➕ Buat Kode Diskon Baru</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div><label style={labelStyle}>Kode *</label><input value={newDiscount.code} onChange={e => setNewDiscount({ ...newDiscount, code: e.target.value.toUpperCase() })} placeholder="SAVE10" style={inputStyle} /></div>
+              <div><label style={labelStyle}>Tipe Diskon *</label>
+                <select value={newDiscount.discount_type} onChange={e => setNewDiscount({ ...newDiscount, discount_type: e.target.value })} style={inputStyle}>
+                  <option value="percentage">Persentase (%)</option>
+                  <option value="fixed">Nominal (Rp)</option>
+                </select>
+              </div>
+              <div><label style={labelStyle}>Nilai Diskon *</label><input type="number" value={newDiscount.discount_value} onChange={e => setNewDiscount({ ...newDiscount, discount_value: e.target.value })} placeholder={newDiscount.discount_type === 'percentage' ? '10' : '50000'} style={inputStyle} /></div>
+              <div><label style={labelStyle}>Maks. Diskon (Rp)</label><input type="number" value={newDiscount.max_discount} onChange={e => setNewDiscount({ ...newDiscount, max_discount: e.target.value })} placeholder="100000" style={inputStyle} /></div>
+              <div><label style={labelStyle}>Maks. Penggunaan</label><input type="number" value={newDiscount.max_uses} onChange={e => setNewDiscount({ ...newDiscount, max_uses: e.target.value })} placeholder="100" style={inputStyle} /></div>
+              <div><label style={labelStyle}>Kadaluarsa</label><input type="datetime-local" value={newDiscount.expires_at} onChange={e => setNewDiscount({ ...newDiscount, expires_at: e.target.value })} style={inputStyle} /></div>
+            </div>
+            <div style={{ marginTop: '12px' }}><label style={labelStyle}>Deskripsi</label><input value={newDiscount.description} onChange={e => setNewDiscount({ ...newDiscount, description: e.target.value })} placeholder="Diskon untuk member baru" style={inputStyle} /></div>
+            <button onClick={handleAddDiscount} disabled={addingDiscount} style={{ marginTop: '14px', padding: '10px 22px', background: '#27ae60', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}>
+              {addingDiscount ? 'Membuat...' : '✓ Buat Kode'}
+            </button>
+          </div>
+
+          <div style={{ background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+            <h3 style={{ marginBottom: '12px' }}>🎫 Daftar Kode Diskon</h3>
+            {discounts.length === 0 ? <p style={{ color: '#999' }}>Belum ada kode diskon</p> : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                <thead><tr style={{ background: '#f5f5f5' }}>{['Kode', 'Tipe', 'Nilai', 'Dipakai', 'Status', 'Aksi'].map(h => <th key={h} style={{ padding: '10px 8px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>{h}</th>)}</tr></thead>
+                <tbody>{discounts.map(d => (
+                  <tr key={d.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                    <td style={{ padding: '10px 8px' }}><strong>{d.code}</strong></td>
+                    <td style={{ padding: '10px 8px' }}>{d.discount_type === 'percentage' ? `${d.discount_value}%` : `Rp ${Number(d.discount_value).toLocaleString('id-ID')}`}</td>
+                    <td style={{ padding: '10px 8px' }}>{d.discount_type === 'percentage' ? `${d.discount_value}%` : `Rp ${Number(d.discount_value).toLocaleString('id-ID')}`}</td>
+                    <td style={{ padding: '10px 8px' }}>{d.used_count || 0}{d.max_uses ? `/${d.max_uses}` : ''}</td>
+                    <td style={{ padding: '10px 8px' }}><span style={{ padding: '3px 10px', borderRadius: '12px', fontSize: '11px', background: d.is_active ? '#d4edda' : '#f8d7da', color: d.is_active ? '#155724' : '#721c24' }}>{d.is_active ? 'Aktif' : 'Nonaktif'}</span></td>
+                    <td style={{ padding: '10px 8px' }}><button onClick={() => handleToggleDiscount(d.id, d.is_active)} style={{ background: 'none', border: 'none', color: '#667eea', cursor: 'pointer', fontSize: '12px' }}>{d.is_active ? 'Nonaktifkan' : 'Aktifkan'}</button></td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
+

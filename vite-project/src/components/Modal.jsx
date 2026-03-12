@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import './Modal.css'
 
-export function Modal({ isOpen, title, children, onClose, onSubmit, submitText = 'Simpan', cancelText = 'Batal', isLoading = false }) {
+export function Modal({ isOpen, title, children, onClose, onSubmit, submitText = 'Simpan', cancelText = 'Batal', isLoading = false, size = 'medium', hideFooter = false }) {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden'
@@ -17,7 +17,7 @@ export function Modal({ isOpen, title, children, onClose, onSubmit, submitText =
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+      <div className={`modal-container modal-${size} animate-scale-in`} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2 className="modal-title">{title}</h2>
           <button
@@ -32,25 +32,27 @@ export function Modal({ isOpen, title, children, onClose, onSubmit, submitText =
 
         <div className="modal-content">{children}</div>
 
-        <div className="modal-footer">
-          <button
-            className="modal-btn modal-btn-cancel"
-            onClick={onClose}
-            disabled={isLoading}
-          >
-            {cancelText}
-          </button>
-          {onSubmit && (
+        {!hideFooter && (
+          <div className="modal-footer">
             <button
-              className="modal-btn modal-btn-submit"
-              onClick={onSubmit}
+              className="modal-btn modal-btn-cancel"
+              onClick={onClose}
               disabled={isLoading}
             >
-              {isLoading && <span className="modal-spinner"></span>}
-              {submitText}
+              {cancelText}
             </button>
-          )}
-        </div>
+            {onSubmit && (
+              <button
+                className="modal-btn modal-btn-submit"
+                onClick={onSubmit}
+                disabled={isLoading}
+              >
+                {isLoading && <span className="modal-spinner"></span>}
+                {submitText}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

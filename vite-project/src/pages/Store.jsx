@@ -6,29 +6,14 @@ import { SkeletonLoader } from '../components/SkeletonLoader'
 import './Store.css'
 
 const getProductImage = (product) => {
-  if (typeof product === 'object' && product) {
-    if (product.image) {
-      if (product.image.startsWith('http') || product.image.startsWith('/')) {
-        return product.image
-      }
-    }
-    const imageMap = {
-      'Kemeja Casual Putih': '/kemeja putih.png',
-      'Kemeja Formal Biru': '/Kemeja Biru.png',
-      'Celana Jeans Biru': '/Celana Jeans Biru.png',
-      'Celana Chino Coklat': '/Celana Chino Coklat.png',
-      'Celana Jogger Hitam': '/Celana Jogger Hitam.png',
-      'T-Shirt Premium Hitam': '/T-Shirt Premium Hitam.png',
-      'Jaket Denim Biru': '/Jaket Denim Biru.png',
-      'Jaket Bomber Hijau': '/Jaket Bomber Hijau.png',
-      'Hoodie Abu-abu': '/Hoodie Abu-abu.png',
-      'Polo Shirt Merah': '/Polo Shirt Merah.png',
-    }
-    if (imageMap[product.name]) {
-      return imageMap[product.name]
+  if (product && product.image) {
+    if (typeof product.image === 'string') {
+      if (product.image.startsWith('http')) return product.image;
+      if (product.image.startsWith('/')) return product.image;
+      return '/' + product.image;
     }
   }
-  return '/vite.svg'
+  return '/vite.svg';
 }
 
 export default function Store({ cart, onCartChange, user, onLogout }) {
