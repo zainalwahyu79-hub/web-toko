@@ -82,7 +82,16 @@ const validateCategoryData = (data) => {
 };
 
 // ===== MIDDLEWARE =====
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    // Ganti URL ini setelah frontend selesai di-deploy ke Vercel:
+    // 'https://web-toko-frontend.vercel.app',
+    /\.vercel\.app$/,  // izinkan semua subdomain vercel.app
+  ],
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../vite-project/public')));
 
@@ -1181,6 +1190,12 @@ app.get('/', (req, res) => {
   res.send('Backend WEB-TOKO jalan 🚀');
 });
 
-app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
-});
+// Jalankan server secara lokal
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`✅ Server running on http://localhost:${PORT}`);
+  });
+}
+
+// Export untuk Vercel Serverless Function
+export default app;
