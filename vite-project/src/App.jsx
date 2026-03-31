@@ -3,7 +3,6 @@ import LoginProfessional from './pages/LoginProfessional'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import { Toast } from './components/Toast'
-import './App.css'
 
 function App() {
   return (
