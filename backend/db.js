@@ -15,7 +15,7 @@ const pool = new Pool({
   ssl: {
     rejectUnauthorized: false, // Wajib diatur false untuk Supabase agar SSL tidak ditolak
   },
-  connectionTimeoutMillis: 30000, 
+  connectionTimeoutMillis: 30000,
   max: 10,
   idleTimeoutMillis: 10000,
 });
@@ -38,7 +38,7 @@ async function testConnection() {
   } catch (err) {
     console.error('❌ KONEKSI GAGAL:', err.message);
     if (err.cause) console.error('🔍 Penyebab:', err.cause.message || err.cause);
-    
+
     if (err.message.includes('ENOTFOUND')) {
       console.log('--- TIPS DEBUGGING (ENOTFOUND) ---');
       console.log('1. Pastikan project Supabase Anda tidak sedang dipause.');

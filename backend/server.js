@@ -19,9 +19,19 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_jwt_key';
 
 // ===== MULTER SETUP (Upload Gambar) =====
-const uploadsDir = path.join(__dirname, '../vite-project/public/uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+// Pada Vercel, filesystem bersifat read-only kecuali folder /tmp
+const isVercel = process.env.VERCEL === '1';
+const uploadsDir = isVercel 
+  ? path.join('/tmp', 'uploads') 
+  : path.join(__dirname, '../vite-project/public/uploads');
+
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+    console.log(`✅ Direktori uploads berhasil dibuat: ${uploadsDir}`);
+  }
+} catch (err) {
+  console.warn(`⚠️ Gagal membuat direktori uploads: ${err.message}. Ini normal di Vercel jika folder sudah disertakan atau jika mencoba menulis di luar /tmp.`);
 }
 
 const storage = multer.diskStorage({
