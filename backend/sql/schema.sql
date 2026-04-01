@@ -152,10 +152,15 @@ CREATE TABLE reservations (
 -- dan seterusnya...
 -- (Saya akan menyisipkan seed categories dan reservations di bawah)
 
--- 1. Akun Default (Password: admin123)
-INSERT INTO users (name, email, password, role) VALUES
-('Admin Utama', 'admin@tokobaju.com', '$2a$10$RzjMf6ocCwbguMYc.4GALOb/PoNBmCLG7cmCmcffQ.IfBDXTeW/yu', 'admin'),
-('Customer Demo', 'customer@email.com', '$2a$10$RzjMf6ocCwbguMYc.4GALOb/PoNBmCLG7cmCmcffQ.IfBDXTeW/yu', 'customer')
+-- 1. Akun Default (Admin: admin123, Customer: customer123)
+INSERT INTO users (name, email, password, role, phone, address) VALUES
+('Admin Utama', 'admin@tokobaju.com', '$2a$10$RzjMf6ocCwbguMYc.4GALOb/PoNBmCLG7cmCmcffQ.IfBDXTeW/yu', 'admin', '08123456789', 'Kantor Pusat Jakarta'),
+('Customer Demo', 'customer@email.com', '$2a$10$6X10hTab.zFq/MfRDbSMy.9yVu/shdOSRCKrySHpX1gJW0j90UZHq', 'customer', '08987654321', 'Jl. Contoh No. 123'),
+('Budi Santoso', 'budi@email.com', '$2a$10$6X10hTab.zFq/MfRDbSMy.9yVu/shdOSRCKrySHpX1gJW0j90UZHq', 'customer', '081222333444', 'Jl. Merdeka No. 10, Bandung'),
+('Siti Aminah', 'siti@email.com', '$2a$10$6X10hTab.zFq/MfRDbSMy.9yVu/shdOSRCKrySHpX1gJW0j90UZHq', 'customer', '085666777888', 'Jl. Mawar No. 5, Surabaya'),
+('Ahmad Fauzi', 'ahmad@email.com', '$2a$10$6X10hTab.zFq/MfRDbSMy.9yVu/shdOSRCKrySHpX1gJW0j90UZHq', 'customer', '087888999000', 'Jl. Melati No. 8, Yogyakarta'),
+('Rina Wijaya', 'rina@email.com', '$2a$10$6X10hTab.zFq/MfRDbSMy.9yVu/shdOSRCKrySHpX1gJW0j90UZHq', 'customer', '082111222333', 'Jl. Anggrek No. 15, Semarang'),
+('Doni Setiawan', 'doni@email.com', '$2a$10$6X10hTab.zFq/MfRDbSMy.9yVu/shdOSRCKrySHpX1gJW0j90UZHq', 'customer', '081333444555', 'Jl. Kamboja No. 3, Medan')
 ON CONFLICT (email) DO NOTHING;
 
 -- 2. Seed Categories

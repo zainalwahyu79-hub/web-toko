@@ -5,43 +5,50 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Menggunakan dns.setDefaultResultOrder untuk memprioritaskan IPv4
-// Membantu mengatasi error ENOTFOUND di beberapa sistem Windows
-if (dns.setDefaultResultOrder) {
-  dns.setDefaultResultOrder('ipv4first');
-}
+// Menggunakan dns.setDefaultResultOrder dinonaktifkan sementara untuk tes DNS default
+// if (dns.setDefaultResultOrder) {
+//   dns.setDefaultResultOrder('ipv4first');
+// }
 
-// Konfigurasi Pool menggunakan Connection String (DATABASE_URL)
-// Lebih stabil dan direkomendasikan untuk Supabase/Postgres eksternal
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false,
+    rejectUnauthorized: false, // Wajib diatur false untuk Supabase agar SSL tidak ditolak
   },
-  connectionTimeoutMillis: 15000,
+  connectionTimeoutMillis: 30000, 
   max: 10,
-  idleTimeoutMillis: 30000,
+  idleTimeoutMillis: 10000,
 });
 
 pool.on('error', (err) => {
   console.error('❌ Kesalahan Pool Database:', err.message);
 });
 
-console.log('--- Mencoba Koneksi Database (via Connection String) ---');
+const dbUrl = process.env.DATABASE_URL || '';
+const redactPassword = (url) => url.replace(/:([^:@]+)@/, ':****@');
+
+console.log('--- Mencoba Koneksi Database ---');
+console.log('🔗 URL:', redactPassword(dbUrl));
 
 async function testConnection() {
   try {
     const res = await pool.query('SELECT NOW()');
     console.log('✅ BERHASIL TERHUBUNG KE DATABASE!');
-    console.log('Waktu Server:', res.rows[0].now);
+    console.log('🕒 Waktu Server:', res.rows[0].now);
   } catch (err) {
     console.error('❌ KONEKSI GAGAL:', err.message);
+    if (err.cause) console.error('🔍 Penyebab:', err.cause.message || err.cause);
     
     if (err.message.includes('ENOTFOUND')) {
       console.log('--- TIPS DEBUGGING (ENOTFOUND) ---');
       console.log('1. Pastikan project Supabase Anda tidak sedang dipause.');
       console.log('2. Coba ganti DNS komputer ke Google DNS (8.8.8.8).');
-      console.log('3. Coba matikan/nyalakan VPN jika Anda menggunakannya.');
+    }
+    if (err.message.includes('timeout')) {
+      console.log('--- TIPS DEBUGGING (TIMEOUT) ---');
+      console.log('1. Pastikan anda terhubung ke internet.');
+      console.log('2. Coba matikan/nyalakan VPN jika Anda menggunakannya.');
+      console.log('3. Firewall mungkin memblokir port 5432/6543.');
     }
   }
 }
