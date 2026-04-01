@@ -5,6 +5,8 @@
 -- Deskripsi: Skema lengkap untuk toko pakaian online dengan fitur modern.
 
 -- Drop existing tables to start fresh (WARNING: Data will be lost)
+DROP TABLE IF EXISTS reservations CASCADE;
+DROP TABLE IF EXISTS categories CASCADE;
 DROP TABLE IF EXISTS store_settings CASCADE;
 DROP TABLE IF EXISTS discount_codes CASCADE;
 DROP TABLE IF EXISTS notifications CASCADE;

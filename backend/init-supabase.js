@@ -1,3 +1,7 @@
+import dns from 'dns';
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
 import pkg from 'pg';
 const { Client } = pkg;
 import dotenv from 'dotenv';
